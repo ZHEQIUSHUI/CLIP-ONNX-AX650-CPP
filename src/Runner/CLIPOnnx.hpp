@@ -1,0 +1,54 @@
+#pragma once
+#include "CLIP.hpp"
+#include "BaseRunner.hpp"
+
+class CLIPOnnx : public CLIP
+{
+private:
+    std::shared_ptr<BaseRunner> m_encoder;
+    cv::Mat input;
+
+public:
+    bool load_encoder(std::string encoder_path) override
+    {
+        m_encoder = CreateRunner(RT_OnnxRunner);
+        BaseConfig config;
+        config.nthread = 4;
+        config.onnx_model = encoder_path;
+        m_encoder->load(config);
+        return true;
+    }
+    void encode(cv::Mat image, std::vector<float> &image_features) override
+    {
+        if (!m_encoder.get())
+        {
+            ALOGE("encoder not init");
+            return;
+        }
+        cv::resize(image, input, cv::Size(224, 224));
+
+        float *inputPtr = (float *)m_encoder->getInputPtr(0);
+
+        uchar *img_data = input.data;
+
+        int letterbox_cols = 224;
+        int letterbox_rows = 224;
+        for (int c = 0; c < 3; c++)
+        {
+            for (int h = 0; h < letterbox_rows; h++)
+            {
+                for (int w = 0; w < letterbox_cols; w++)
+                {
+                    int in_index = h * letterbox_cols * 3 + w * 3 + c;
+                    int out_index = c * letterbox_rows * letterbox_cols + h * letterbox_cols + w;
+                    inputPtr[out_index] = (float(img_data[in_index]) - _mean_val[c]) * _std_val[c];
+                }
+            }
+        }
+
+        auto ret = m_encoder->inference();
+
+        image_features.resize(LEN_IMAGE_FEATURE);
+        memcpy(image_features.data(), m_encoder->getOutputPtr(0), LEN_IMAGE_FEATURE * sizeof(float));
+    }
+};
