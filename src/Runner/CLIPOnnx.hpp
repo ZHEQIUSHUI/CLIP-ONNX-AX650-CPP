@@ -26,6 +26,7 @@ public:
             return;
         }
         cv::resize(image, input, cv::Size(224, 224));
+        cv::cvtColor(input, input, cv::COLOR_BGR2RGB);
 
         float *inputPtr = (float *)m_encoder->getInputPtr(0);
 

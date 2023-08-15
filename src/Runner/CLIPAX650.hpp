@@ -24,6 +24,7 @@ public:
             return;
         }
         cv::resize(image, input, cv::Size(224, 224));
+        cv::cvtColor(input, input, cv::COLOR_BGR2RGB);
         auto ret = m_encoder->inference();
 
         image_features.resize(LEN_IMAGE_FEATURE);

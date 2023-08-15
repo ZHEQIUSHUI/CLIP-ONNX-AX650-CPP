@@ -111,23 +111,27 @@ int main(int argc, char *argv[])
     mClip->decode(image_features, text_features, logits_per_image, logits_per_text);
 
     printf("\n");
-    printf("per image:\n");
-    printf("%32s|", "image path\\text");
-    for (size_t i = 0; i < texts.size(); i++)
+    if (texts.size() > 1)
     {
-        printf("%32s|", texts[i].c_str());
-    }
-    printf("\n");
-    for (size_t i = 0; i < logits_per_image.size(); i++)
-    {
-        printf("%32s|", image_paths[i].c_str());
-        for (size_t j = 0; j < logits_per_image[i].size(); j++)
+        printf("per image:\n");
+        printf("%32s|", "image path\\text");
+        for (size_t i = 0; i < texts.size(); i++)
         {
-            printf("%32.2f|", logits_per_image[i][j]);
+            printf("%32s|", texts[i].c_str());
+        }
+        printf("\n");
+        for (size_t i = 0; i < logits_per_image.size(); i++)
+        {
+            printf("%32s|", image_paths[i].c_str());
+            for (size_t j = 0; j < logits_per_image[i].size(); j++)
+            {
+                printf("%32.2f|", logits_per_image[i][j]);
+            }
+            printf("\n");
         }
         printf("\n");
     }
-    printf("\n");
+
     printf("\n");
     printf("per text:\n");
     printf("%32s|", "text\\image path");
