@@ -7,12 +7,12 @@
 
 int main(int argc, char *argv[])
 {
-    std::string image_src = "./test.jpg";
-    std::string text_src = "a cat";
-    std::string vocab_path = "./onnx_models/mobile_sam_decoder.onnx";
-    std::string image_encoder_model_path = "./onnx_models/mobile_sam_encoder.onnx";
-    std::string text_encoder_model_path = "./onnx_models/mobile_sam_encoder.onnx";
-    std::string decoder_model_path = "./onnx_models/mobile_sam_decoder.onnx";
+    std::string image_src;
+    std::string text_src;
+    std::string vocab_path;
+    std::string image_encoder_model_path;
+    std::string text_encoder_model_path;
+    std::string decoder_model_path;
 
     cmdline::parser cmd;
     cmd.add<std::string>("ienc", 0, "encoder model(onnx model or axmodel)", true, image_encoder_model_path);

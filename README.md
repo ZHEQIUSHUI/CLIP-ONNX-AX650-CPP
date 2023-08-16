@@ -49,3 +49,7 @@ per text:
                              dog|                            0.00|                            0.00|                            1.00|
 
 ```
+
+## Reference
+[CLIP](https://github.com/openai/CLIP)\
+[CLIP-ImageSearch-NCNN](https://github.com/EdVince/CLIP-ImageSearch-NCNN)
