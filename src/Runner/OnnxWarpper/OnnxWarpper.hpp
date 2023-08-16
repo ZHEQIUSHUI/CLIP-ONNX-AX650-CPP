@@ -42,6 +42,11 @@ public:
 
             printf("%20s: ", input_name.c_str());
             auto input_shape = session.GetInputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape();
+
+            if (input_shape.size() && input_shape[0] < 0)
+            {
+                input_shape[0] = 1;
+            }
             std::vector<size_t> tmp_input_shape(input_shape.size());
             for (size_t j = 0; j < input_shape.size(); j++)
             {
@@ -71,6 +76,10 @@ public:
 
             printf("%20s: ", output_name.c_str());
             auto output_shape = session.GetOutputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape();
+            if (output_shape.size() && output_shape[0] < 0)
+            {
+                output_shape[0] = 1;
+            }
             std::vector<size_t> tmp_output_shape(output_shape.size());
             for (size_t j = 0; j < output_shape.size(); j++)
             {

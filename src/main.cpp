@@ -10,12 +10,14 @@ int main(int argc, char *argv[])
     std::string image_src = "./test.jpg";
     std::string text_src = "a cat";
     std::string vocab_path = "./onnx_models/mobile_sam_decoder.onnx";
-    std::string encoder_model_path = "./onnx_models/mobile_sam_encoder.onnx";
+    std::string image_encoder_model_path = "./onnx_models/mobile_sam_encoder.onnx";
+    std::string text_encoder_model_path = "./onnx_models/mobile_sam_encoder.onnx";
     std::string decoder_model_path = "./onnx_models/mobile_sam_decoder.onnx";
 
     cmdline::parser cmd;
-    cmd.add<std::string>("encoder", 'e', "encoder model(onnx model or axmodel)", true, encoder_model_path);
-    cmd.add<std::string>("decoder", 'd', "decoder model(onnx)", true, decoder_model_path);
+    cmd.add<std::string>("ienc", 0, "encoder model(onnx model or axmodel)", true, image_encoder_model_path);
+    cmd.add<std::string>("tenc", 0, "text encoder model(onnx model or axmodel)", true, text_encoder_model_path);
+    cmd.add<std::string>("dec", 'd', "decoder model(onnx)", true, decoder_model_path);
     cmd.add<std::string>("image", 'i', "image file or folder(jpg png etc....)", true, image_src);
     cmd.add<std::string>("text", 't', "text or txt file", true, text_src);
     cmd.add<std::string>("vocab", 'v', "vocab path", true, vocab_path);
@@ -23,25 +25,27 @@ int main(int argc, char *argv[])
     cmd.parse_check(argc, argv);
 
     vocab_path = cmd.get<std::string>("vocab");
-    encoder_model_path = cmd.get<std::string>("encoder");
-    decoder_model_path = cmd.get<std::string>("decoder");
+    image_encoder_model_path = cmd.get<std::string>("ienc");
+    text_encoder_model_path = cmd.get<std::string>("tenc");
+    decoder_model_path = cmd.get<std::string>("dec");
 
     std::shared_ptr<CLIP> mClip;
-    if (string_utility<std::string>::ends_with(encoder_model_path, ".onnx"))
+    if (string_utility<std::string>::ends_with(image_encoder_model_path, ".onnx"))
     {
         mClip.reset(new CLIPOnnx);
     }
-    else if (string_utility<std::string>::ends_with(encoder_model_path, ".axmodel"))
+    else if (string_utility<std::string>::ends_with(image_encoder_model_path, ".axmodel"))
     {
         mClip.reset(new CLIPAX650);
     }
     else
     {
-        fprintf(stderr, "no impl for %s\n", encoder_model_path.c_str());
+        fprintf(stderr, "no impl for %s\n", image_encoder_model_path.c_str());
         return -1;
     }
 
-    mClip->load_encoder(encoder_model_path);
+    mClip->load_image_encoder(image_encoder_model_path);
+    mClip->load_text_encoder(text_encoder_model_path);
     mClip->load_decoder(decoder_model_path);
     mClip->load_tokenizer(vocab_path);
 
@@ -70,7 +74,7 @@ int main(int argc, char *argv[])
     {
         texts.push_back(text_src);
     }
-    std::vector<std::vector<int>> text_features;
+    std::vector<std::vector<float>> text_features;
     mClip->encode(texts, text_features);
 
     std::vector<std::vector<float>> image_features;
@@ -107,8 +111,11 @@ int main(int argc, char *argv[])
     }
 
     std::vector<std::vector<float>> logits_per_image, logits_per_text;
-
+    auto time_start = std::chrono::high_resolution_clock::now();
     mClip->decode(image_features, text_features, logits_per_image, logits_per_text);
+    auto time_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = time_end - time_start;
+    std::cout << "decode Inference Cost time : " << diff.count() << "s" << std::endl;
 
     printf("\n");
     if (texts.size() > 1)

@@ -9,7 +9,7 @@ private:
     cv::Mat input;
 
 public:
-    bool load_encoder(std::string encoder_path) override
+    bool load_image_encoder(std::string encoder_path) override
     {
         m_encoder.reset(new ax_runner_ax650);
         m_encoder->init(encoder_path.c_str());
