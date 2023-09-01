@@ -75,7 +75,11 @@ int main(int argc, char *argv[])
         texts.push_back(text_src);
     }
     std::vector<std::vector<float>> text_features;
+    auto time_start = std::chrono::high_resolution_clock::now();
     mClip->encode(texts, text_features);
+    auto time_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = time_end - time_start;
+    std::cout << "encode text Inference Cost time : " << diff.count() << "s" << std::endl;
 
     std::vector<std::vector<float>> image_features;
     std::vector<std::string> image_paths;
@@ -111,11 +115,11 @@ int main(int argc, char *argv[])
     }
 
     std::vector<std::vector<float>> logits_per_image, logits_per_text;
-    auto time_start = std::chrono::high_resolution_clock::now();
+    time_start = std::chrono::high_resolution_clock::now();
     mClip->decode(image_features, text_features, logits_per_image, logits_per_text);
-    auto time_end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> diff = time_end - time_start;
-    std::cout << "decode Inference Cost time : " << diff.count() << "s" << std::endl;
+    time_end = std::chrono::high_resolution_clock::now();
+    diff = time_end - time_start;
+    std::cout << "matmul Inference Cost time : " << diff.count() << "s" << std::endl;
 
     printf("\n");
     if (texts.size() > 1)
