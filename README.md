@@ -1,12 +1,6 @@
 # CLIP
 
-other 因垂丝汀 project [SAM-ONNX-AX650-CPP](https://github.com/ZHEQIUSHUI/SAM-ONNX-AX650-CPP)
-
-## Export Onnx
-
-[ZHEQIUSHUI/CLIP](https://github.com/ZHEQIUSHUI/CLIP)\
-[ZHEQIUSHUI/Chinese-CLIP](https://github.com/ZHEQIUSHUI/Chinese-CLIP/tree/ax650)
-
+other interesting project [SAM-ONNX-AX650-CPP](https://github.com/ZHEQIUSHUI/SAM-ONNX-AX650-CPP)
 
 ## Build
 ```
@@ -31,13 +25,18 @@ aarch64-none-gnu library:\
 
 
 ## ONNX
+### Export Onnx
+
+[ZHEQIUSHUI/CLIP](https://github.com/ZHEQIUSHUI/CLIP)\
+[ZHEQIUSHUI/Chinese-CLIP](https://github.com/ZHEQIUSHUI/Chinese-CLIP/tree/ax650)
+
 ### get onnx model
 ```
 git clone https://github.com/ZHEQIUSHUI/CLIP.git
 cd CLIP
 python onnx_export.py
 ```
-### 润 in x86 with onnxruntime
+### run in x86 with onnxruntime
 #### 英文
 ```
 ./main --ienc image_encoder.onnx --tenc text_encoder.onnx --dec feature_matmul.onnx -v ../vocab.txt -i ../images/ -t ../text.txt 
@@ -117,7 +116,7 @@ per text:
 ```
 
 ## AX650
-### 润 in AXERA Chip AX650 
+### run in AXERA Chip AX650 
 #### 英文
 ```
 ./main --ienc image_encoder.axmodel --tenc text_encoder.onnx -d feature_matmul.onnx  -v vocab.txt -t text.txt -i images/
