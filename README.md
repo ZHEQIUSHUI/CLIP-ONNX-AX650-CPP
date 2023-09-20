@@ -4,6 +4,7 @@ other 因垂丝汀 project [SAM-ONNX-AX650-CPP](https://github.com/ZHEQIUSHUI/SA
 
 ## Export Onnx
 
+[ZHEQIUSHUI/CLIP](https://github.com/ZHEQIUSHUI/CLIP)\
 [ZHEQIUSHUI/Chinese-CLIP](https://github.com/ZHEQIUSHUI/Chinese-CLIP/tree/ax650)
 
 
