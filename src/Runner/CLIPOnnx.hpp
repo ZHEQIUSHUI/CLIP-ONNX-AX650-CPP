@@ -16,6 +16,9 @@ public:
         config.nthread = 4;
         config.onnx_model = encoder_path;
         m_encoder->load(config);
+        LEN_IMAGE_FEATURE = m_encoder->getOutputShape(0)[1];
+        ALOGI("image feature len %d", LEN_IMAGE_FEATURE);
+        image_features_input = std::vector<float>(1024 * LEN_IMAGE_FEATURE);
         return true;
     }
     void encode(cv::Mat image, std::vector<float> &image_features) override

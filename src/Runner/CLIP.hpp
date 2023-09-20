@@ -11,10 +11,6 @@
 #include "sample_log.h"
 #include "Tokenizer.hpp"
 
-#define LEN_IMAGE_FEATURE 512
-#define LEN_TEXT_FEATURE 512
-#define LEN_TEXT_TOKEN 77
-
 // struct CLIP_IMAG_FEATURE_T
 // {
 //     float feature[LEN_IMAGE_FEATURE];
@@ -42,11 +38,16 @@ protected:
         *DecoderOutputNames[2]{"logits_per_image", "logits_per_text"};
     float _mean_val[3] = {0.48145466f * 255.f, 0.4578275f * 255.f, 0.40821073f * 255.f};
     float _std_val[3] = {1 / (0.26862954f * 255.f), 1 / (0.26130258f * 255.f), 1 / (0.27577711f * 255.f)};
-    Tokenizer tokenizer;
+    std::shared_ptr<TokenizerBase> tokenizer;
 
-    std::vector<float> image_features_input = std::vector<float>(1024 * LEN_IMAGE_FEATURE);
-    std::vector<float> text_features_input = std::vector<float>(1024 * LEN_TEXT_FEATURE);
-    std::vector<int> text_tokens_input = std::vector<int>(1024 * LEN_TEXT_TOKEN);
+    std::vector<float> image_features_input;
+    std::vector<float> text_features_input;
+    std::vector<int> text_tokens_input;
+
+    bool _isCN = false;
+    int LEN_IMAGE_FEATURE = 512;
+    int LEN_TEXT_FEATURE = 512;
+    int LEN_TEXT_TOKEN = 77;
 
 public:
     CLIP()
@@ -59,9 +60,21 @@ public:
         session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
     }
 
-    bool load_tokenizer(std::string vocab_path)
+    bool load_tokenizer(std::string vocab_path, bool isCN)
     {
-        return tokenizer.load_tokenize(vocab_path);
+        _isCN = isCN;
+        if (isCN)
+        {
+            LEN_TEXT_TOKEN = 52;
+            tokenizer.reset(new TokenizerClipChinese);
+        }
+        else
+        {
+            tokenizer.reset(new TokenizerClip);
+        }
+        ALOGI("text token len %d", LEN_TEXT_TOKEN);
+        text_tokens_input = std::vector<int>(1024 * LEN_TEXT_TOKEN);
+        return tokenizer->load_tokenize(vocab_path);
     }
 
     bool load_decoder(std::string decoder_path)
@@ -72,7 +85,6 @@ public:
             ALOGE("Model not loaded (invalid input/output count)");
             return false;
         }
-
         return true;
     }
 
@@ -84,6 +96,10 @@ public:
             ALOGE("Model not loaded (invalid input/output count)");
             return false;
         }
+        auto shape = TextEncoderSession->GetOutputTypeInfo(0).GetTensorTypeAndShapeInfo().GetShape();
+        LEN_TEXT_FEATURE = shape[1];
+        ALOGI("text feature len %d", LEN_TEXT_FEATURE);
+        text_features_input = std::vector<float>(1024 * LEN_TEXT_FEATURE);
         return true;
     }
 
@@ -96,7 +112,7 @@ public:
         text_token.resize(texts.size());
         for (size_t i = 0; i < texts.size(); i++)
         {
-            tokenizer.encode_text(texts[i], text_token[i]);
+            tokenizer->encode_text(texts[i], text_token[i]);
         }
 
         if (text_token.size() * LEN_TEXT_TOKEN > text_tokens_input.size())
@@ -116,25 +132,53 @@ public:
             memcpy(text_tokens_input_ptr + i * LEN_TEXT_TOKEN, text_token[i].data(), text_token[i].size() * sizeof(int));
         }
 
-        std::vector<int64_t> text_token_shape = {(int64_t)text_token.size(), LEN_TEXT_TOKEN};
-
-        auto inputTensor = (Ort::Value::CreateTensor<int>(
-            memory_info_handler, text_tokens_input.data(), text_tokens_input.size(), text_token_shape.data(), text_token_shape.size()));
-
-        Ort::RunOptions runOptions;
-        auto OutputTensors = TextEncoderSession->Run(runOptions, TextEncInputNames, &inputTensor,
-                                                     1, TextEncOutputNames, 1);
-
-        auto &text_features_tensor = OutputTensors[0];
-        auto text_features_tensor_ptr = text_features_tensor.GetTensorMutableData<float>();
-        auto output_shape = text_features_tensor.GetTensorTypeAndShapeInfo().GetShape();
-
-        text_features.resize(output_shape[0]);
-
-        for (size_t i = 0; i < text_features.size(); i++)
+        if (_isCN)
         {
-            text_features[i].resize(output_shape[1]);
-            memcpy(text_features[i].data(), text_features_tensor_ptr + i * output_shape[1], output_shape[1] * sizeof(float));
+            std::vector<int64_t> text_token_shape = {1, LEN_TEXT_TOKEN};
+            text_features.resize(text_token.size());
+
+            std::vector<int64> text_tokens_input_64(texts.size() * LEN_TEXT_TOKEN);
+            for (size_t i = 0; i < text_tokens_input_64.size(); i++)
+            {
+                text_tokens_input_64[i] = text_tokens_input[i];
+            }
+
+            for (size_t i = 0; i < text_token.size(); i++)
+            {
+                auto inputTensor = (Ort::Value::CreateTensor<int64>(
+                    memory_info_handler, text_tokens_input_64.data() + i * LEN_TEXT_TOKEN, LEN_TEXT_TOKEN, text_token_shape.data(), text_token_shape.size()));
+
+                Ort::RunOptions runOptions;
+                auto OutputTensors = TextEncoderSession->Run(runOptions, TextEncInputNames, &inputTensor,
+                                                             1, TextEncOutputNames, 1);
+                auto &text_features_tensor = OutputTensors[0];
+                auto text_features_tensor_ptr = text_features_tensor.GetTensorMutableData<float>();
+
+                text_features[i].resize(LEN_TEXT_FEATURE);
+                memcpy(text_features[i].data(), text_features_tensor_ptr, LEN_TEXT_FEATURE * sizeof(float));
+            }
+        }
+        else
+        {
+            std::vector<int64_t> text_token_shape = {(int64_t)text_token.size(), LEN_TEXT_TOKEN};
+
+            auto inputTensor = (Ort::Value::CreateTensor<int>(
+                memory_info_handler, text_tokens_input.data(), text_tokens_input.size(), text_token_shape.data(), text_token_shape.size()));
+
+            Ort::RunOptions runOptions;
+            auto OutputTensors = TextEncoderSession->Run(runOptions, TextEncInputNames, &inputTensor,
+                                                         1, TextEncOutputNames, 1);
+            auto &text_features_tensor = OutputTensors[0];
+            auto text_features_tensor_ptr = text_features_tensor.GetTensorMutableData<float>();
+            auto output_shape = text_features_tensor.GetTensorTypeAndShapeInfo().GetShape();
+
+            text_features.resize(output_shape[0]);
+
+            for (size_t i = 0; i < text_features.size(); i++)
+            {
+                text_features[i].resize(output_shape[1]);
+                memcpy(text_features[i].data(), text_features_tensor_ptr + i * output_shape[1], output_shape[1] * sizeof(float));
+            }
         }
     }
 
