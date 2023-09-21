@@ -30,12 +30,48 @@ aarch64-none-gnu library:\
 [ZHEQIUSHUI/CLIP](https://github.com/ZHEQIUSHUI/CLIP)\
 [ZHEQIUSHUI/Chinese-CLIP](https://github.com/ZHEQIUSHUI/Chinese-CLIP/tree/ax650)
 
-### get onnx model
+### get model
+#### export onnx by yourself
 ```
+# Original Clip
 git clone https://github.com/ZHEQIUSHUI/CLIP.git
 cd CLIP
 python onnx_export.py
+
+# Chinese Clip
+git clone https://github.com/ZHEQIUSHUI/Chinese-CLIP.git
+git checkout ax650
+
+# download weights
+cd weights
+./downloads.sh
+
+# get onnx model
+cd ..
+./convert.sh
+
+# onnxsim model
+cd ax650
+./onnxsim.sh
 ```
+or direct download model from release
+```
+# Chinese Clip model
+wget https://github.com/ZHEQIUSHUI/CLIP-ONNX-AX650-CPP/releases/download/cnclip/cnclip_vitb16.axmodel
+wget https://github.com/ZHEQIUSHUI/CLIP-ONNX-AX650-CPP/releases/download/cnclip/cnclip_vitb16.img.fp32.onnx
+wget https://github.com/ZHEQIUSHUI/CLIP-ONNX-AX650-CPP/releases/download/cnclip/cnclip_vitb16.txt.fp32.onnx
+
+# feature matmul model
+wget https://github.com/ZHEQIUSHUI/CLIP-ONNX-AX650-CPP/releases/download/3models/feature_matmul.onnx
+
+# Original Clip model
+wget https://github.com/ZHEQIUSHUI/CLIP-ONNX-AX650-CPP/releases/download/3models/image_encoder.onnx
+wget https://github.com/ZHEQIUSHUI/CLIP-ONNX-AX650-CPP/releases/download/3models/image_encoder.axmodel
+wget https://github.com/ZHEQIUSHUI/CLIP-ONNX-AX650-CPP/releases/download/3models/text_encoder.onnx
+
+```
+
+
 ### run in x86 with onnxruntime
 #### 英文
 ```
