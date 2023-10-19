@@ -87,7 +87,7 @@ find_package(OpenCV REQUIRED)
 
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${BSP_MSP_DIR}/include)
-link_directories(${BSP_MSP_DIR}/lib)
+target_link_directories(CLIPQT PRIVATE ${BSP_MSP_DIR}/lib)
 
 option(BUILD_WITH_AX650 "build with ax650" OFF)
 
@@ -97,7 +97,7 @@ endif()
 
 message(STATUS "BUILD_WITH_AX650 : ${BUILD_WITH_AX650}")
 if(BUILD_WITH_AX650)
-    target_link_libraries(CLIPQT ax_engine ax_interpreter ax_sys ax_ivps)
+    target_link_libraries(CLIPQT PRIVATE ax_engine ax_interpreter ax_sys ax_ivps)
 endif()
 
 target_link_libraries(CLIPQT PRIVATE ${OpenCV_LIBS})
