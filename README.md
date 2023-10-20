@@ -1,5 +1,9 @@
 # CLIP
 
+
+https://github.com/AXERA-TECH/CLIP-ONNX-AX650-CPP/assets/46700201/7fefc9dd-9168-462d-bae9-bb013731f5c6
+
+
 other interesting project [SAM-ONNX-AX650-CPP](https://github.com/ZHEQIUSHUI/SAM-ONNX-AX650-CPP)
 
 ## Build
@@ -22,7 +26,8 @@ aarch64-none-gnu library:\
 [onnxruntime](https://github.com/ZHEQIUSHUI/SAM-ONNX-AX650-CPP/releases/download/ax_models/onnxruntime-aarch64-none-gnu-1.16.0.zip)\
 [opencv](https://github.com/ZHEQIUSHUI/SAM-ONNX-AX650-CPP/releases/download/ax_models/libopencv-4.6-aarch64-none.zip)
 
-
+## Resource
+[Google Drive](https://drive.google.com/drive/folders/13fAprRaBqoY-_c6CQroHnEoZ5iMQ0Cq_?usp=sharing)
 
 ## ONNX
 ### Export Onnx
@@ -30,7 +35,7 @@ aarch64-none-gnu library:\
 [ZHEQIUSHUI/CLIP](https://github.com/ZHEQIUSHUI/CLIP)\
 [ZHEQIUSHUI/Chinese-CLIP](https://github.com/ZHEQIUSHUI/Chinese-CLIP/tree/ax650)
 
-### get model
+### Get Original model
 #### export onnx by yourself
 ```
 # Original Clip
