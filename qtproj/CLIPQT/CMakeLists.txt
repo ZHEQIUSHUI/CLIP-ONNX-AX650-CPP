@@ -97,7 +97,7 @@ endif()
 
 message(STATUS "BUILD_WITH_AX650 : ${BUILD_WITH_AX650}")
 if(BUILD_WITH_AX650)
-    target_link_libraries(CLIPQT PRIVATE ax_engine ax_interpreter ax_sys ax_ivps)
+    target_link_libraries(CLIPQT PRIVATE ax_engine ax_interpreter ax_sys)
 endif()
 
 target_link_libraries(CLIPQT PRIVATE ${OpenCV_LIBS})

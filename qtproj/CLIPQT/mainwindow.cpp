@@ -197,14 +197,14 @@ void MainWindow::on_btn_search_clicked()
             count++;
         }
     }
-
-    int nCols = ceil(sqrt((float)count));
+    count = MIN(count, max_display);
+    int maxCols = ceil(sqrt((float)count));
     // int nRows = ((count % nCols) > 0) ? (count / nCols + 1) : (count / nCols);
 
     // show
     for (size_t i = 0; i < count && i < max_display; i++)
     {
-        add_image_text_label(QString::fromStdString(results[i].path), QString::fromStdString(std::to_string(results[i].score)), nCols);
+        add_image_text_label(QString::fromStdString(results[i].path), QString::fromStdString(std::to_string(results[i].score)), maxCols);
     }
 }
 

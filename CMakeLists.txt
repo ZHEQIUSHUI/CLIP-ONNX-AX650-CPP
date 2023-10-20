@@ -71,7 +71,7 @@ target_link_libraries(main ${OpenCV_LIBS})
 target_link_libraries(main gomp ${ONNXRUNTIME_LIB})
 
 if(BUILD_WITH_AX650)
-    target_link_libraries(main ax_engine ax_interpreter ax_sys ax_ivps)
+    target_link_libraries(main ax_engine ax_interpreter ax_sys)
 endif()
 
 install(TARGETS main DESTINATION bin)
