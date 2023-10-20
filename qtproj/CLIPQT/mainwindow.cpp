@@ -45,7 +45,12 @@ MainWindow::MainWindow(
     std::vector<std::string> image_list;
     cv::glob(image_src + "*.*", image_list);
 
-    auto tqdm = create_cqdm(image_list.size(), 20);
+    image_features.resize(image_list.size());
+    image_paths.resize(image_list.size());
+
+    std::mutex tqdm_mutex;
+    auto tqdm = create_cqdm(image_list.size(), 40);
+#pragma omp parallel for num_threads(8)
     for (size_t i = 0; i < image_list.size(); i++)
     {
         std::string image_path = image_list[i];
@@ -56,9 +61,12 @@ MainWindow::MainWindow(
             continue;
         }
         std::vector<float> feat;
+        tqdm_mutex.lock();
         mClip->encode(src, feat);
-        image_features.push_back(feat);
-        image_paths.push_back(image_path);
+        tqdm_mutex.unlock();
+        image_features[i] = feat;
+        image_paths[i] = image_path;
+
         update_cqdm(&tqdm, i);
     }
 
@@ -70,7 +78,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::add_image_text_label(QString image_path, QString text)
+void MainWindow::add_image_text_label(QString image_path, QString text, int max_row)
 {
     // two labels vertical layout
     myQLabel *image_label = new myQLabel(this);
@@ -96,7 +104,7 @@ void MainWindow::add_image_text_label(QString image_path, QString text)
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->addWidget(image_label);
     layout->addWidget(text_label);
-    layout->setStretchFactor(image_label, 6);
+    layout->setStretchFactor(image_label, 999);
     layout->setStretchFactor(text_label, 1);
 
     ui->gridLayout->addLayout(layout, current_row, current_col);
@@ -180,10 +188,23 @@ void MainWindow::on_btn_search_clicked()
     std::sort(results.begin(), results.end(), [](const path_and_score &a, const path_and_score &b)
               { return a.score > b.score; });
 
-    // show
-    for (size_t i = 0; i < results.size() && i < max_display; i++)
+    // count score>0.01
+    int count = 0;
+    for (size_t i = 0; i < results.size(); i++)
     {
-        add_image_text_label(QString::fromStdString(results[i].path), QString::fromStdString(std::to_string(results[i].score)));
+        if (results[i].score > 0.01)
+        {
+            count++;
+        }
+    }
+
+    int nCols = ceil(sqrt((float)count));
+    // int nRows = ((count % nCols) > 0) ? (count / nCols + 1) : (count / nCols);
+
+    // show
+    for (size_t i = 0; i < count && i < max_display; i++)
+    {
+        add_image_text_label(QString::fromStdString(results[i].path), QString::fromStdString(std::to_string(results[i].score)), nCols);
     }
 }
 

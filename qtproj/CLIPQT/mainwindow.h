@@ -36,9 +36,9 @@ private:
 
     int current_row = 0;
     int current_col = 0;
-    int max_row = 5;
+    // int max_row = 5;
     int max_display = 20;
-    void add_image_text_label(QString image_path = QString(), QString text = QString());
+    void add_image_text_label(QString image_path = QString(), QString text = QString(), int max_row = 5);
     void clear_image_text_label();
 
     std::shared_ptr<CLIP> mClip;
