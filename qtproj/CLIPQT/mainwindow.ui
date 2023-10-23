@@ -14,7 +14,7 @@
    <enum>Qt::DefaultContextMenu</enum>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>CLIP</string>
   </property>
   <property name="styleSheet">
    <string notr="true"/>
