@@ -38,12 +38,20 @@
               <height>40</height>
              </size>
             </property>
+            <property name="font">
+             <font>
+              <pointsize>14</pointsize>
+             </font>
+            </property>
             <property name="styleSheet">
              <string notr="true">border-radius: 20px;
 background-color: rgb(99, 122, 125);</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>
+            </property>
+            <property name="placeholderText">
+             <string>Type in Chinese or English and click Enter to search.</string>
             </property>
            </widget>
           </item>
