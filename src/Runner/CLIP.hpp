@@ -48,7 +48,7 @@ protected:
     int LEN_IMAGE_FEATURE = 512;
     int LEN_TEXT_FEATURE = 512;
     int LEN_TEXT_TOKEN = 77;
-
+    int input_height, input_width;
 public:
     CLIP()
     {

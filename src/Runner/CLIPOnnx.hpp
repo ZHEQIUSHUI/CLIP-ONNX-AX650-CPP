@@ -16,6 +16,11 @@ public:
         config.nthread = 8;
         config.onnx_model = encoder_path;
         m_encoder->load(config);
+
+        input_width = m_encoder->getInputShape(0)[3];
+        input_height = m_encoder->getInputShape(0)[2];
+        ALOGI("input size %d %d", input_height, input_width);
+
         LEN_IMAGE_FEATURE = m_encoder->getOutputShape(0)[1];
         ALOGI("image feature len %d", LEN_IMAGE_FEATURE);
         image_features_input = std::vector<float>(1024 * LEN_IMAGE_FEATURE);
@@ -28,15 +33,15 @@ public:
             ALOGE("encoder not init");
             return;
         }
-        cv::resize(image, input, cv::Size(224, 224));
+        cv::resize(image, input, cv::Size(input_width, input_height));
         cv::cvtColor(input, input, cv::COLOR_BGR2RGB);
 
         float *inputPtr = (float *)m_encoder->getInputPtr(0);
 
         uchar *img_data = input.data;
 
-        int letterbox_cols = 224;
-        int letterbox_rows = 224;
+        int letterbox_cols = input_width;
+        int letterbox_rows = input_height;
         for (int c = 0; c < 3; c++)
         {
             for (int h = 0; h < letterbox_rows; h++)
