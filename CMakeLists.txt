@@ -22,11 +22,13 @@ cmake_minimum_required(VERSION 3.0)
 project(CLIP-ONNX-AX650-CPP)
 
 # 添加 FLAGS 检查代码是否有明显 bug
-include(cmake/overlook.cmake)
+# include(cmake/overlook.cmake)
 
 add_compile_options(-std=c++17)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+
 
 # link third-party library onnxruntime-win-x64-1.14.1 and opencv4
 if(NOT ONNXRUNTIME_DIR)
@@ -51,12 +53,16 @@ include_directories(${BSP_MSP_DIR}/include)
 link_directories(${BSP_MSP_DIR}/lib)
 
 option(BUILD_WITH_AX650 "build with ax650" OFF)
+option(BUILD_VIDEO_DEMO "build video demo" OFF)
 
 if(BUILD_WITH_AX650)
-    add_compile_definitions(-DBUILD_WITH_AX650)
+    set(AXERA_TARGET_CHIP "AX650")
+    add_compile_definitions(BUILD_WITH_AX650)
+    add_compile_definitions(AXERA_TARGET_CHIP_AX650)
 endif()
 
 message(STATUS "BUILD_WITH_AX650 : ${BUILD_WITH_AX650}")
+message(STATUS "BUILD_VIDEO_DEMO : ${BUILD_VIDEO_DEMO}")
 
 add_library(clip STATIC
     src/Runner/BaseRunner.cpp
@@ -75,3 +81,28 @@ if(BUILD_WITH_AX650)
 endif()
 
 install(TARGETS main DESTINATION bin)
+
+if(BUILD_WITH_AX650 AND BUILD_VIDEO_DEMO)
+    add_subdirectory(ax-pipeline/third-party/RTSP)
+    add_subdirectory(ax-pipeline/third-party/RtspServer)    
+    add_subdirectory(ax-pipeline/third-party/mp4demux)
+    add_subdirectory(ax-pipeline/examples/common/common_pipeline)
+    add_executable(main_video src/main_video.cpp ax-pipeline/examples/utilities/net_utils.c ${BSP_MSP_DIR}/../sample/common/common_sys.c)
+
+    include_directories(${BSP_MSP_DIR}/../sample/common)
+    include_directories(ax-pipeline/third-party/RTSP/include)
+    include_directories(ax-pipeline/third-party/mp4demux)
+
+    target_link_directories(main_video PRIVATE ${BSP_MSP_DIR}/../../third-party/drm/lib)
+    target_link_libraries(main_video PRIVATE drm)
+
+    target_link_libraries(main_video PRIVATE clip common_pipeline)
+
+    target_link_libraries(main_video PRIVATE ${OpenCV_LIBS})
+    target_link_libraries(main_video PRIVATE gomp ${ONNXRUNTIME_LIB})
+
+    target_link_libraries(main_video PRIVATE ax_interpreter ax_sys ax_venc ax_vdec ax_ivps ax_ive ax_engine ax_vo gomp stdc++fs)
+
+    target_link_libraries(main_video PRIVATE RtspServer)
+    target_link_libraries(main_video PRIVATE rtspclisvr Mp4Demuxer)
+endif()
