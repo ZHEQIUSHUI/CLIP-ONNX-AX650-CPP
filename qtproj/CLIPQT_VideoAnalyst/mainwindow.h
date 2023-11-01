@@ -41,12 +41,14 @@ private slots:
 
     void on_btn_select_video_clicked();
 
-private:
+public:
     Ui::MainWindow *ui;
 
     std::shared_ptr<CLIP> mClip;
 
     pipeline_t pipe = {0};
     VideoDemux demux;
+private slots:
+    void on_bn_stop_clicked();
 };
 #endif // MAINWINDOW_H

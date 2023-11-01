@@ -30,6 +30,12 @@ int main(int argc, char *argv[])
     model_info.decoder_model_path = cmd.get<std::string>("dec");
     model_info.language = cmd.get<int>("language");
 
+//    model_info.vocab_path = "/root/CLIP-ONNX-AX650-CPP/cn_vocab.txt";
+//    model_info.image_encoder_model_path = "/root/CLIP-ONNX-AX650-CPP/onnx_models/cn_clip_vitb16.axmodel";
+//    model_info.text_encoder_model_path = "/root/CLIP-ONNX-AX650-CPP/onnx_models/vitb16.txt.fp32.onnx";
+//    model_info.decoder_model_path = "/root/CLIP-ONNX-AX650-CPP/onnx_models/feature_matmul.onnx";
+//    model_info.language = 1;
+
     QApplication a(argc, argv);
     QApplication::setStyle(new DarkStyle);
 

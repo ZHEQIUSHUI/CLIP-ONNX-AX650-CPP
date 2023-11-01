@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.0)
 
 project(CLIPQT_VideoAnalyst LANGUAGES CXX)
 
@@ -8,7 +8,10 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-set(CMAKE_CXX_STANDARD 11)
+enable_language(C CXX)
+
+add_compile_options(-std=c++17)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # QtCreator supports the following variables for Android, which are identical to qmake Android variables.
@@ -28,6 +31,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(NOT BSP_MSP_DIR)
   set(BSP_MSP_DIR ${CMAKE_SOURCE_DIR}/../../axpi_pro_bsp_sdk/msp/out)
 endif()
+message(STATUS "BSP_MSP_DIR Path: ${BSP_MSP_DIR}")
 
 find_package(Qt6 COMPONENTS Widgets)
 
@@ -57,6 +61,7 @@ else()
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+    myqlabel.h
     style/DarkStyle.cpp
     style/DarkStyle.h
 
@@ -111,7 +116,7 @@ include_directories(ax-pipeline/third-party/mp4demux)
 
 target_link_directories(CLIPQT_VideoAnalyst PRIVATE ${BSP_MSP_DIR}/../../third-party/drm/lib)
 target_link_libraries(CLIPQT_VideoAnalyst PRIVATE drm)
-target_link_libraries(CLIPQT_VideoAnalyst PRIVATE clip common_pipeline)
+target_link_libraries(CLIPQT_VideoAnalyst PRIVATE common_pipeline)
 target_link_libraries(CLIPQT_VideoAnalyst PRIVATE ${OpenCV_LIBS})
 target_link_libraries(CLIPQT_VideoAnalyst PRIVATE gomp ${ONNXRUNTIME_LIB})
 target_link_libraries(CLIPQT_VideoAnalyst PRIVATE ax_interpreter ax_sys ax_venc ax_vdec ax_ivps ax_ive ax_engine ax_vo gomp stdc++fs)

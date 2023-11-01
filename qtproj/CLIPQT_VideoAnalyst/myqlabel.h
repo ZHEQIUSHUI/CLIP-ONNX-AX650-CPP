@@ -4,9 +4,13 @@
 #include <QPainter>
 #include <qimage.h>
 
+#include "mutex"
+
 class myQLabel : public QLabel
 {
+    Q_OBJECT
 private:
+    std::mutex mLock;
     QImage cur_image;
 
     static QPoint getWindowPoint(QSize window, QSize img, QPoint pt)
@@ -44,13 +48,25 @@ private:
 
     void paintEvent(QPaintEvent *event) override
     {
+        std::lock_guard<std::mutex> tlock(mLock);
         QPainter p(this);
         p.drawImage(getTargetRect(this->size(), cur_image), cur_image);
+        p.end();
+    }
+
+ signals:
+    void repaint_signal();
+
+ protected slots:
+    void repaint_slot()
+    {
+        repaint();
     }
 
 public:
     myQLabel(QWidget *parent) : QLabel(parent)
     {
+        connect(this,SIGNAL(repaint_signal()),this,SLOT(repaint_slot()));
     }
 
     QImage getCurrentImage()
@@ -60,8 +76,12 @@ public:
 
     void SetImage(QImage img)
     {
-        cur_image = img;
-        repaint();
+        {
+            std::lock_guard<std::mutex> tlock(mLock);
+            cur_image = img.copy();
+        }
+
+        emit repaint_signal();
     }
 };
 #endif // MYQLABEL_H
