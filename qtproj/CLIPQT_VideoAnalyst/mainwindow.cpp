@@ -26,6 +26,16 @@ std::vector<std::vector<float>> gImageFeatures(1);
 std::vector<QTableWidgetItem*> gUpdateScoreItem;
 MainWindow *windows;
 
+void display_func(pipeline_buffer_t *buff)
+{
+    if(windows)
+    {
+        QImage disp = QImage((uchar*)buff->p_vir,buff->n_width,buff->n_height,QImage::Format_BGR888);
+        windows->ui->label->SetImage(disp);
+    }
+}
+
+
 void ai_inference_func(pipeline_buffer_t *buff)
 {
     if (gClip)
@@ -45,32 +55,50 @@ void ai_inference_func(pipeline_buffer_t *buff)
             {
                 gUpdateScoreItem[i]->setText(QString::number(logits_per_image[0][i],'f',2));
             }
-        }
 
-
-        for (size_t i = 0; i < gTexts.size(); i++)
-        {
-            printf("%8s|", gTexts[i].c_str());
-        }
-        printf("\n");
-        for (size_t i = 0; i < logits_per_image.size(); i++)
-        {
-            for (size_t j = 0; j < logits_per_image[i].size(); j++)
+            int max_id = -1;
+            float max_val = -MAXFLOAT;
+            for (size_t i = 0; i < gTexts.size(); i++)
             {
-                printf("%8.2f|", logits_per_image[i][j]);
+                if(logits_per_image[0][i] > max_val)
+                {
+                    max_val = logits_per_image[0][i];
+                    max_id = i;
+                }
             }
-            printf("\n");
+
+            QBrush brush(QColor(0,255,0));
+            for (size_t i = 0; i < gTexts.size(); i++)
+            {
+                if(max_id==i)
+                {
+                    gUpdateScoreItem[i]->setBackground(brush);
+                }
+                else
+                {
+                    gUpdateScoreItem[i]->setBackground(QBrush());
+                }
+            }
+
+
         }
-        printf("\n");
+
+
+        //        for (size_t i = 0; i < gTexts.size(); i++)
+        //        {
+        //            printf("%8s|", gTexts[i].c_str());
+        //        }
+        //        printf("\n");
+        //        for (size_t i = 0; i < logits_per_image.size(); i++)
+        //        {
+        //            for (size_t j = 0; j < logits_per_image[i].size(); j++)
+        //            {
+        //                printf("%8.2f|", logits_per_image[i][j]);
+        //            }
+        //            printf("\n");
+        //        }
+        //        printf("\n");
     }
-
-    if(windows)
-    {
-        QImage disp = QImage((uchar*)buff->p_vir,buff->n_width,buff->n_height,QImage::Format_BGR888);
-        windows->ui->label->SetImage(disp);
-    }
-
-
 }
 
 void _demux_frame_callback(const void *buff, int len, void *reserve)
@@ -85,7 +113,7 @@ void _demux_frame_callback(const void *buff, int len, void *reserve)
     buf_h26x.p_vir = (void *)buff;
     buf_h26x.n_size = len;
     user_input((pipeline_t *)reserve, 1, &buf_h26x);
-    usleep(10 * 1000);
+    usleep(30 * 1000);
 }
 
 MainWindow::MainWindow(
@@ -123,23 +151,48 @@ MainWindow::MainWindow(
         }
         // init pipe
         {
-            pipeline_ivps_config_t &config = pipe.m_ivps_attr;
-            config.n_ivps_grp = 0; // 重复的会创建失败
-            config.n_ivps_fps = 30;
-            config.n_ivps_width = 1280;
-            config.n_ivps_height = 720;
-            config.b_letterbox = 1;
-            config.n_fifo_count = 1; // 如果想要拿到数据并输出到回调 就设为1~4
+            //display
+            {
+                auto&pipe = pipes[0];
+                pipeline_ivps_config_t &config = pipe.m_ivps_attr;
+                config.n_ivps_grp = 0; // 重复的会创建失败
+                config.n_ivps_fps = 30;
+                config.n_ivps_width = 1280;
+                config.n_ivps_height = 720;
+                config.b_letterbox = 1;
+                config.n_fifo_count = 1; // 如果想要拿到数据并输出到回调 就设为1~4
 
-            pipe.enable = 1;
-            pipe.pipeid = 0;
-            pipe.m_input_type = pi_vdec_h264;
-            pipe.m_output_type = po_buff_rgb;
-            pipe.n_loog_exit = 0;
-            pipe.m_vdec_attr.n_vdec_grp = 0;
-            pipe.output_func = ai_inference_func; // 图像输出的回调函数
+                pipe.enable = 1;
+                pipe.pipeid = 0;
+                pipe.m_input_type = pi_vdec_h264;
+                pipe.m_output_type = po_buff_rgb;
+                pipe.n_loog_exit = 0;
+                pipe.m_vdec_attr.n_vdec_grp = 0;
+                pipe.output_func = display_func; // 图像输出的回调函数
 
-            create_pipeline(&pipe);
+                create_pipeline(&pipe);
+            }
+            //inference
+            {
+                auto&pipe = pipes[1];
+                pipeline_ivps_config_t &config = pipe.m_ivps_attr;
+                config.n_ivps_grp = 1; // 重复的会创建失败
+                config.n_ivps_fps = 30;
+                config.n_ivps_width = 640;
+                config.n_ivps_height = 360;
+                config.b_letterbox = 1;
+                config.n_fifo_count = 1; // 如果想要拿到数据并输出到回调 就设为1~4
+
+                pipe.enable = 1;
+                pipe.pipeid = 1;
+                pipe.m_input_type = pi_vdec_h264;
+                pipe.m_output_type = po_buff_rgb;
+                pipe.n_loog_exit = 0;
+                pipe.m_vdec_attr.n_vdec_grp = 0;
+                pipe.output_func = ai_inference_func; // 图像输出的回调函数
+
+                create_pipeline(&pipe);
+            }
         }
 
         // init model
@@ -172,7 +225,10 @@ MainWindow::MainWindow(
 
 MainWindow::~MainWindow()
 {
-    destory_pipeline(&pipe);
+    destory_pipeline(&pipes[0]);
+    destory_pipeline(&pipes[1]);
+    AX_ENGINE_Deinit();
+    COMMON_SYS_DeInit();
     delete ui;
 }
 
@@ -185,7 +241,7 @@ void MainWindow::on_btn_add_text_clicked()
 void MainWindow::on_btn_remove_text_clicked()
 {
     int curRow = ui->tableWidget->currentRow();
-    if (curRow > 0 && curRow < ui->tableWidget->rowCount())
+    if (curRow >= 0)
         ui->tableWidget->removeRow(curRow);
 }
 
@@ -233,7 +289,7 @@ void MainWindow::on_btn_select_video_clicked()
         return;
     }
 
-    if (!demux.Open(filename.toStdString(), 1, _demux_frame_callback, &pipe))
+    if (!demux.Open(filename.toStdString(), 1, _demux_frame_callback, &pipes[0]))
     {
         ALOGE("demux.Open video failed");
     }

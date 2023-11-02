@@ -46,7 +46,7 @@ public:
 
     std::shared_ptr<CLIP> mClip;
 
-    pipeline_t pipe = {0};
+    pipeline_t pipes[2] = {0};
     VideoDemux demux;
 private slots:
     void on_bn_stop_clicked();
