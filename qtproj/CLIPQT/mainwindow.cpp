@@ -7,6 +7,8 @@
 #include "clip/string_utility.hpp"
 #include "clip/cqdm.h"
 
+#include "internal_func.hpp"
+
 MainWindow::MainWindow(
     std::string image_src,
     std::string vocab_path,
@@ -43,32 +45,69 @@ MainWindow::MainWindow(
         image_src += "/";
     }
     std::vector<std::string> image_list;
-    cv::glob(image_src + "*.*", image_list);
+    cv::glob(image_src + "*.jpg", image_list);
+
+    std::vector<std::string> image_list_png;
+    cv::glob(image_src + "*.png", image_list_png);
+
+    std::vector<std::string> image_list_jpeg;
+    cv::glob(image_src + "*.jpeg", image_list_jpeg);
+
+    image_list.insert(image_list.end(), image_list_png.begin(), image_list_png.end());
+    image_list.insert(image_list.end(), image_list_jpeg.begin(), image_list_jpeg.end());
+
+    ALOGI("totally image count %d", image_list.size());
 
     image_features.resize(image_list.size());
     image_paths.resize(image_list.size());
 
     std::mutex tqdm_mutex;
     auto tqdm = create_cqdm(image_list.size(), 40);
-#pragma omp parallel for num_threads(8)
+
+    int load_cnt = 0, gen_cnt = 0;
+    // #pragma omp parallel for num_threads(8)
     for (size_t i = 0; i < image_list.size(); i++)
     {
         std::string image_path = image_list[i];
-        auto src = cv::imread(image_path);
-        if (!src.data)
-        {
-            update_cqdm(&tqdm, i);
-            continue;
-        }
+        std::string feat_path = image_path + ".feat";
         std::vector<float> feat;
-        tqdm_mutex.lock();
-        mClip->encode(src, feat);
-        tqdm_mutex.unlock();
+        if (_file_exist(feat_path))
+        {
+            std::vector<char> tmp;
+            _file_read(feat_path, tmp);
+            if (tmp.size() != (mClip->get_image_feature_size() * 4))
+            {
+                ALOGE("%s not match model %s,please remove it and restart process", feat_path.c_str(), image_encoder_model_path.c_str());
+                update_cqdm(&tqdm, i);
+                continue;
+            }
+            feat.resize(mClip->get_image_feature_size());
+            memcpy(feat.data(), tmp.data(), tmp.size());
+            load_cnt++;
+        }
+        else
+        {
+            auto src = cv::imread(image_path);
+            if (!src.data)
+            {
+                update_cqdm(&tqdm, i);
+                continue;
+            }
+
+            tqdm_mutex.lock();
+            mClip->encode(src, feat);
+            tqdm_mutex.unlock();
+            _file_dump(feat_path, (char *)feat.data(), feat.size() * 4);
+            gen_cnt++;
+        }
+
         image_features[i] = feat;
         image_paths[i] = image_path;
 
         update_cqdm(&tqdm, i);
     }
+
+    ALOGI("load feat %d, gen feat %d", load_cnt, gen_cnt);
 
     ui->setupUi(this);
 }
@@ -183,7 +222,7 @@ void MainWindow::on_btn_search_clicked()
             }
         }
     }
-
+    ALOGI("there are %d results score bigger than 0", results.size());
     // sort by score
     std::sort(results.begin(), results.end(), [](const path_and_score &a, const path_and_score &b)
               { return a.score > b.score; });

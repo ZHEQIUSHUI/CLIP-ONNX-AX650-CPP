@@ -51,6 +51,10 @@ else()
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+
+    internal_func.cpp
+    internal_func.hpp
+
     style/DarkStyle.cpp
     style/DarkStyle.h
 

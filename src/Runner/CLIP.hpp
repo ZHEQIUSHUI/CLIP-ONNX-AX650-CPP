@@ -60,6 +60,16 @@ public:
         session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
     }
 
+    int get_image_feature_size()
+    {
+        return LEN_IMAGE_FEATURE;
+    }
+
+    int get_text_feature_size()
+    {
+        return LEN_TEXT_FEATURE;
+    }
+
     bool load_tokenizer(std::string vocab_path, bool isCN)
     {
         _isCN = isCN;
