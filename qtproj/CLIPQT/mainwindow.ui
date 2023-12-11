@@ -29,7 +29,38 @@
       <item>
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout" stretch="6,1">
+         <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,6,1">
+          <item>
+           <widget class="QLineEdit" name="txt_threshold">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>40</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>100</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>14</pointsize>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">border-radius: 20px;
+background-color: rgb(99, 122, 125);</string>
+            </property>
+            <property name="text">
+             <string>0.01</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
           <item>
            <widget class="QLineEdit" name="txt_context">
             <property name="minimumSize">

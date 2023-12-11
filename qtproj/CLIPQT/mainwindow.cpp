@@ -64,6 +64,7 @@ MainWindow::MainWindow(
     auto tqdm = create_cqdm(image_list.size(), 40);
 
     int load_cnt = 0, gen_cnt = 0;
+    std::vector<int> remove_ids;
     for (size_t i = 0; i < image_list.size(); i++)
     {
         std::string image_path = image_list[i];
@@ -71,12 +72,13 @@ MainWindow::MainWindow(
         std::vector<float> feat(mClip->get_image_feature_size(), 0);
         do
         {
-            if (_file_exist(feat_path))
+            if(_file_exist(feat_path))
             {
                 std::vector<char> tmp;
                 _file_read(feat_path, tmp);
-                if (tmp.size() != (mClip->get_image_feature_size() * 4))
+                if(tmp.size() != (mClip->get_image_feature_size() * 4))
                 {
+                    remove_ids.push_back(i);
                     ALOGE("%s not match model %s,please remove it and restart process", feat_path.c_str(), image_encoder_model_path.c_str());
                     break;
                 }
@@ -88,19 +90,28 @@ MainWindow::MainWindow(
                 auto src = cv::imread(image_path);
                 if (!src.data)
                 {
-                    ALOGE("load image failed, %s", image_path.c_str());
+                    remove_ids.push_back(i);
+                    ALOGE("load image failed, %s",image_path.c_str());
                     break;
                 }
                 mClip->encode(src, feat);
-                _file_dump(feat_path, (char *)feat.data(), feat.size() * 4);
+                _file_dump(feat_path, (char*)feat.data(), feat.size()*4);
                 gen_cnt++;
             }
-        } while (false);
+        } while(false);
 
         image_features[i] = feat;
         image_paths[i] = image_path;
 
         update_cqdm(&tqdm, i);
+    }
+
+    for(size_t i = 0; i < remove_ids.size(); i++)
+    {
+        auto idx = remove_ids[remove_ids.size() - i - 1];
+        ALOGI("remove feature for %s",image_paths[idx].c_str());
+        image_features.erase(image_features.begin() + idx);
+        image_paths.erase(image_paths.begin() + idx);
     }
 
     ALOGI("load feat %d, gen feat %d", load_cnt, gen_cnt);
@@ -127,7 +138,7 @@ void MainWindow::add_image_text_label(QString image_path, QString text, int max_
     else
     {
         QImage image(image_path);
-        if (image.bits())
+        if(image.bits())
             image_label->SetImage(image);
         else
             image_label->setText("No image");
@@ -221,16 +232,25 @@ void MainWindow::on_btn_search_clicked()
             }
         }
     }
-    ALOGI("there are %d results score bigger than 0", results.size());
+    ALOGI("there are %d results score bigger than 0",results.size());
     // sort by score
     std::sort(results.begin(), results.end(), [](const path_and_score &a, const path_and_score &b)
               { return a.score > b.score; });
 
     // count score>0.01
+    double threshold = 0.01;
+    bool isOk = false;
+    threshold = ui->txt_threshold->text().toDouble(&isOk);
+    if(!isOk)
+    {
+        threshold = 0.01;
+    }
+    ALOGI("threshold = %f", threshold);
+
     int count = 0;
     for (size_t i = 0; i < results.size(); i++)
     {
-        if (results[i].score > 0.01)
+        if (results[i].score > threshold)
         {
             count++;
         }
