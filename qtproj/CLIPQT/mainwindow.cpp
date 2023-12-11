@@ -61,45 +61,41 @@ MainWindow::MainWindow(
     image_features.resize(image_list.size());
     image_paths.resize(image_list.size());
 
-    std::mutex tqdm_mutex;
     auto tqdm = create_cqdm(image_list.size(), 40);
 
     int load_cnt = 0, gen_cnt = 0;
-    // #pragma omp parallel for num_threads(8)
     for (size_t i = 0; i < image_list.size(); i++)
     {
         std::string image_path = image_list[i];
         std::string feat_path = image_path + ".feat";
-        std::vector<float> feat;
-        if (_file_exist(feat_path))
+        std::vector<float> feat(mClip->get_image_feature_size(), 0);
+        do
         {
-            std::vector<char> tmp;
-            _file_read(feat_path, tmp);
-            if (tmp.size() != (mClip->get_image_feature_size() * 4))
+            if (_file_exist(feat_path))
             {
-                ALOGE("%s not match model %s,please remove it and restart process", feat_path.c_str(), image_encoder_model_path.c_str());
-                update_cqdm(&tqdm, i);
-                continue;
+                std::vector<char> tmp;
+                _file_read(feat_path, tmp);
+                if (tmp.size() != (mClip->get_image_feature_size() * 4))
+                {
+                    ALOGE("%s not match model %s,please remove it and restart process", feat_path.c_str(), image_encoder_model_path.c_str());
+                    break;
+                }
+                memcpy(feat.data(), tmp.data(), tmp.size());
+                load_cnt++;
             }
-            feat.resize(mClip->get_image_feature_size());
-            memcpy(feat.data(), tmp.data(), tmp.size());
-            load_cnt++;
-        }
-        else
-        {
-            auto src = cv::imread(image_path);
-            if (!src.data)
+            else
             {
-                update_cqdm(&tqdm, i);
-                continue;
+                auto src = cv::imread(image_path);
+                if (!src.data)
+                {
+                    ALOGE("load image failed, %s", image_path.c_str());
+                    break;
+                }
+                mClip->encode(src, feat);
+                _file_dump(feat_path, (char *)feat.data(), feat.size() * 4);
+                gen_cnt++;
             }
-
-            tqdm_mutex.lock();
-            mClip->encode(src, feat);
-            tqdm_mutex.unlock();
-            _file_dump(feat_path, (char *)feat.data(), feat.size() * 4);
-            gen_cnt++;
-        }
+        } while (false);
 
         image_features[i] = feat;
         image_paths[i] = image_path;
@@ -131,7 +127,10 @@ void MainWindow::add_image_text_label(QString image_path, QString text, int max_
     else
     {
         QImage image(image_path);
-        image_label->SetImage(image);
+        if (image.bits())
+            image_label->SetImage(image);
+        else
+            image_label->setText("No image");
     }
     // set text
     text_label->setText(text);
