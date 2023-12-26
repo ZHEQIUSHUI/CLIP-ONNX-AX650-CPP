@@ -58,6 +58,7 @@ option(BUILD_VIDEO_DEMO "build video demo" OFF)
 
 if(BUILD_WITH_AX620E)
     set(BUILD_WITH_AX650 ON)
+    add_compile_definitions(AXERA_TARGET_CHIP_AX620E)
 endif()
 
 

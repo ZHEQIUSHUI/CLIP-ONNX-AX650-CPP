@@ -1,0 +1,3 @@
+bird:bird.bin
+cat:cat.bin
+dog:dog.bin
