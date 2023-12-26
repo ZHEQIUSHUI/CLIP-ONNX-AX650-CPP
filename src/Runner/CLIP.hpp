@@ -1,9 +1,9 @@
 #pragma once
 #include <map>
-#include "vector"
+#include <vector>
 #include <string>
-#include "fstream"
-#include "thread"
+#include <fstream>
+#include <thread>
 
 #include "opencv2/opencv.hpp"
 #include "onnxruntime_cxx_api.h"
@@ -11,15 +11,87 @@
 #include "sample_log.h"
 #include "Tokenizer.hpp"
 
-// struct CLIP_IMAG_FEATURE_T
-// {
-//     float feature[LEN_IMAGE_FEATURE];
-// };
+class ClipDecoder
+{
+public:
+    static void softmax(const std::vector<std::vector<float>> &input, std::vector<std::vector<float>> &result)
+    {
+        result.reserve(input.size());
 
-// struct CLIP_TEXT_FEATURE_T
-// {
-//     int feature[LEN_TEXT_FEATURE];
-// };
+        for (const auto &row : input)
+        {
+            std::vector<float> rowResult;
+            rowResult.reserve(row.size());
+
+            float maxVal = *std::max_element(row.begin(), row.end());
+
+            float sumExp = 0.0;
+            for (float val : row)
+            {
+                float expVal = std::exp(val - maxVal);
+                rowResult.emplace_back(expVal);
+                sumExp += expVal;
+            }
+
+            for (float &val : rowResult)
+            {
+                val /= sumExp;
+            }
+
+            result.emplace_back(std::move(rowResult));
+        }
+    }
+
+    static void forward(
+        const std::vector<std::vector<float>> &imageFeatures, const std::vector<std::vector<float>> &textFeatures,
+        std::vector<std::vector<float>> &logits_per_image, std::vector<std::vector<float>> &logits_per_text)
+    {
+        std::vector<std::vector<float>> logitsPerImage;
+        logitsPerImage.reserve(imageFeatures.size());
+
+        for (const auto &_row : imageFeatures)
+        {
+            float norm = 0.0;
+            for (float val : _row)
+            {
+                norm += val * val;
+            }
+            norm = std::sqrt(norm);
+            std::vector<float> normRow;
+            normRow.reserve(_row.size());
+            for (float val : _row)
+            {
+                normRow.push_back(val / norm);
+            }
+
+            std::vector<float> row;
+            row.reserve(textFeatures.size());
+            for (const auto &textRow : textFeatures)
+            {
+                float sum = 0.0;
+                for (size_t i = 0; i < normRow.size(); i++)
+                {
+                    sum += normRow[i] * textRow[i];
+                }
+                row.push_back(100 * sum);
+            }
+            logitsPerImage.push_back(std::move(row));
+        }
+
+        std::vector<std::vector<float>> logitsPerText(logitsPerImage[0].size(), std::vector<float>(logitsPerImage.size()));
+
+        for (size_t i = 0; i < logitsPerImage.size(); i++)
+        {
+            for (size_t j = 0; j < logitsPerImage[i].size(); j++)
+            {
+                logitsPerText[j][i] = logitsPerImage[i][j];
+            }
+        }
+
+        softmax(logitsPerImage, logits_per_image);
+        softmax(logitsPerText, logits_per_text);
+    }
+};
 
 class CLIP
 {
@@ -27,15 +99,13 @@ protected:
     std::string device{"cpu"};
     Ort::Env env;
     Ort::SessionOptions session_options;
-    std::shared_ptr<Ort::Session> TextEncoderSession, DecoderSession;
+    std::shared_ptr<Ort::Session> TextEncoderSession;
     Ort::MemoryInfo memory_info_handler = Ort::MemoryInfo::CreateCpu(
         OrtArenaAllocator, OrtMemTypeDefault);
 
     const char
         *TextEncInputNames[1]{"texts"},
-        *TextEncOutputNames[1]{"text_features"},
-        *DecoderInputNames[2]{"image_features", "text_features"},
-        *DecoderOutputNames[2]{"logits_per_image", "logits_per_text"};
+        *TextEncOutputNames[1]{"text_features"};
     float _mean_val[3] = {0.48145466f * 255.f, 0.4578275f * 255.f, 0.40821073f * 255.f};
     float _std_val[3] = {1 / (0.26862954f * 255.f), 1 / (0.26130258f * 255.f), 1 / (0.27577711f * 255.f)};
     std::shared_ptr<TokenizerBase> tokenizer;
@@ -49,6 +119,7 @@ protected:
     int LEN_TEXT_FEATURE = 512;
     int LEN_TEXT_TOKEN = 77;
     int input_height, input_width;
+
 public:
     CLIP()
     {
@@ -85,17 +156,6 @@ public:
         ALOGI("text token len %d", LEN_TEXT_TOKEN);
         text_tokens_input = std::vector<int>(1024 * LEN_TEXT_TOKEN);
         return tokenizer->load_tokenize(vocab_path);
-    }
-
-    bool load_decoder(std::string decoder_path)
-    {
-        DecoderSession.reset(new Ort::Session(env, decoder_path.c_str(), session_options));
-        if (DecoderSession->GetInputCount() != 2 || DecoderSession->GetOutputCount() != 2)
-        {
-            ALOGE("Model not loaded (invalid input/output count)");
-            return false;
-        }
-        return true;
     }
 
     bool load_text_encoder(std::string encoder_path)
@@ -136,7 +196,7 @@ public:
         {
             if (text_token[i].size() > LEN_TEXT_TOKEN)
             {
-                ALOGW("text_features index %d ,bigger than %d\n", i, LEN_TEXT_TOKEN);
+                ALOGW("text_features index %ld ,bigger than %d\n", i, LEN_TEXT_TOKEN);
                 continue;
             }
             memcpy(text_tokens_input_ptr + i * LEN_TEXT_TOKEN, text_token[i].data(), text_token[i].size() * sizeof(int));
@@ -155,8 +215,8 @@ public:
 
             for (size_t i = 0; i < text_token.size(); i++)
             {
-                auto inputTensor = (Ort::Value::CreateTensor<int64>(
-                    memory_info_handler, text_tokens_input_64.data() + i * LEN_TEXT_TOKEN, LEN_TEXT_TOKEN, text_token_shape.data(), text_token_shape.size()));
+                auto inputTensor = Ort::Value::CreateTensor<int64>(
+                    memory_info_handler, text_tokens_input_64.data() + i * LEN_TEXT_TOKEN, LEN_TEXT_TOKEN, text_token_shape.data(), text_token_shape.size());
 
                 Ort::RunOptions runOptions;
                 auto OutputTensors = TextEncoderSession->Run(runOptions, TextEncInputNames, &inputTensor,
@@ -195,108 +255,44 @@ public:
     void decode(std::vector<std::vector<float>> &image_features, std::vector<std::vector<float>> &text_features,
                 std::vector<std::vector<float>> &logits_per_image, std::vector<std::vector<float>> &logits_per_text)
     {
-        if (image_features.size() * LEN_IMAGE_FEATURE > image_features_input.size())
-        {
-            image_features_input.resize(image_features.size() * LEN_IMAGE_FEATURE);
-        }
-        if (text_features.size() * LEN_TEXT_FEATURE > text_features_input.size())
-        {
-            text_features_input.resize(text_features.size() * LEN_TEXT_FEATURE);
-        }
-
-        memset(image_features_input.data(), 0, image_features_input.size() * sizeof(float));
-        auto image_features_input_ptr = image_features_input.data();
-        for (size_t i = 0; i < image_features.size(); i++)
-        {
-            if (image_features[i].size() != LEN_IMAGE_FEATURE)
-            {
-                ALOGW("image_features index %d ,not equal %d\n", i, LEN_IMAGE_FEATURE);
-                continue;
-            }
-            memcpy(image_features_input_ptr + i * LEN_IMAGE_FEATURE, image_features[i].data(), LEN_IMAGE_FEATURE * sizeof(float));
-        }
-
-        memset(text_features_input.data(), 0, text_features_input.size() * sizeof(float));
-        auto text_features_input_ptr = text_features_input.data();
-        for (size_t i = 0; i < text_features.size(); i++)
-        {
-            if (text_features[i].size() != LEN_TEXT_FEATURE)
-            {
-                ALOGW("text_features index %d ,not equal %d\n", i, LEN_TEXT_FEATURE);
-                continue;
-            }
-            memcpy(text_features_input_ptr + i * LEN_TEXT_FEATURE, text_features[i].data(), text_features[i].size() * sizeof(float));
-        }
-        std::vector<Ort::Value> inputTensors;
-
-        std::vector<int64_t> image_features_shape = {(int64_t)image_features.size(), LEN_IMAGE_FEATURE};
-        std::vector<int64_t> text_features_shape = {(int64_t)text_features.size(), LEN_TEXT_FEATURE};
-
-        inputTensors.push_back(Ort::Value::CreateTensor<float>(
-            memory_info_handler, image_features_input.data(), image_features_input.size(), image_features_shape.data(), image_features_shape.size()));
-        inputTensors.push_back(Ort::Value::CreateTensor<float>(
-            memory_info_handler, text_features_input.data(), text_features_input.size(), text_features_shape.data(), text_features_shape.size()));
-
-        Ort::RunOptions runOptions;
-        auto DecoderOutputTensors = DecoderSession->Run(runOptions, DecoderInputNames, inputTensors.data(),
-                                                        inputTensors.size(), DecoderOutputNames, 2);
-
-        auto &logits_per_image_output = DecoderOutputTensors[0];
-        auto logits_per_image_ptr = logits_per_image_output.GetTensorMutableData<float>();
-        auto logits_per_image_shape = logits_per_image_output.GetTensorTypeAndShapeInfo().GetShape();
-        logits_per_image.resize(logits_per_image_shape[0]);
-        for (size_t i = 0; i < logits_per_image.size(); i++)
-        {
-            logits_per_image[i].resize(logits_per_image_shape[1]);
-            memcpy(logits_per_image[i].data(), logits_per_image_ptr + i * logits_per_image_shape[1], logits_per_image_shape[1] * sizeof(float));
-        }
-
-        auto &logits_per_text_output = DecoderOutputTensors[1];
-        auto logits_per_text_ptr = logits_per_text_output.GetTensorMutableData<float>();
-        auto logits_per_text_shape = logits_per_text_output.GetTensorTypeAndShapeInfo().GetShape();
-        logits_per_text.resize(logits_per_text_shape[0]);
-        for (size_t i = 0; i < logits_per_text.size(); i++)
-        {
-            logits_per_text[i].resize(logits_per_text_shape[1]);
-            memcpy(logits_per_text[i].data(), logits_per_text_ptr + i * logits_per_text_shape[1], logits_per_text_shape[1] * sizeof(float));
-        }
+        ClipDecoder::forward(image_features, text_features, logits_per_image, logits_per_text);
     }
 
-    void decode(std::vector<float> &image_features, std::vector<int> &text_features,
-                std::vector<std::vector<float>> &logits_per_image, std::vector<std::vector<float>> &logits_per_text)
-    {
-        std::vector<Ort::Value> inputTensors;
+    // void decode(std::vector<float> &image_features, std::vector<int> &text_features,
+    //             std::vector<std::vector<float>> &logits_per_image, std::vector<std::vector<float>> &logits_per_text)
+    // {
+    //     std::vector<Ort::Value> inputTensors;
 
-        std::vector<int64_t> image_features_shape = {(int64_t)image_features.size() / LEN_IMAGE_FEATURE, LEN_IMAGE_FEATURE};
-        std::vector<int64_t> text_features_shape = {(int64_t)text_features.size() / LEN_TEXT_FEATURE, LEN_TEXT_FEATURE};
+    //     std::vector<int64_t> image_features_shape = {(int64_t)image_features.size() / LEN_IMAGE_FEATURE, LEN_IMAGE_FEATURE};
+    //     std::vector<int64_t> text_features_shape = {(int64_t)text_features.size() / LEN_TEXT_FEATURE, LEN_TEXT_FEATURE};
 
-        inputTensors.push_back(Ort::Value::CreateTensor<float>(
-            memory_info_handler, image_features.data(), image_features_shape[0] * image_features_shape[1], image_features_shape.data(), image_features_shape.size()));
-        inputTensors.push_back(Ort::Value::CreateTensor<int>(
-            memory_info_handler, text_features.data(), text_features_shape[0] * text_features_shape[1], text_features_shape.data(), text_features_shape.size()));
+    //     inputTensors.push_back(Ort::Value::CreateTensor<float>(
+    //         memory_info_handler, image_features.data(), image_features_shape[0] * image_features_shape[1], image_features_shape.data(), image_features_shape.size()));
+    //     inputTensors.push_back(Ort::Value::CreateTensor<int>(
+    //         memory_info_handler, text_features.data(), text_features_shape[0] * text_features_shape[1], text_features_shape.data(), text_features_shape.size()));
 
-        Ort::RunOptions runOptions;
-        auto DecoderOutputTensors = DecoderSession->Run(runOptions, DecoderInputNames, inputTensors.data(),
-                                                        inputTensors.size(), DecoderOutputNames, 2);
+    //     Ort::RunOptions runOptions;
+    //     auto DecoderOutputTensors = DecoderSession->Run(runOptions, DecoderInputNames, inputTensors.data(),
+    //                                                     inputTensors.size(), DecoderOutputNames, 2);
 
-        auto &logits_per_image_output = DecoderOutputTensors[0];
-        auto logits_per_image_ptr = logits_per_image_output.GetTensorMutableData<float>();
-        auto logits_per_image_shape = logits_per_image_output.GetTensorTypeAndShapeInfo().GetShape();
-        logits_per_image.resize(logits_per_image_shape[0]);
-        for (size_t i = 0; i < logits_per_image.size(); i++)
-        {
-            logits_per_image[i].resize(logits_per_image_shape[1]);
-            memcpy(logits_per_image[i].data(), logits_per_image_ptr + i * logits_per_image_shape[1], logits_per_image_shape[1] * sizeof(float));
-        }
+    //     auto &logits_per_image_output = DecoderOutputTensors[0];
+    //     auto logits_per_image_ptr = logits_per_image_output.GetTensorMutableData<float>();
+    //     auto logits_per_image_shape = logits_per_image_output.GetTensorTypeAndShapeInfo().GetShape();
+    //     logits_per_image.resize(logits_per_image_shape[0]);
+    //     for (size_t i = 0; i < logits_per_image.size(); i++)
+    //     {
+    //         logits_per_image[i].resize(logits_per_image_shape[1]);
+    //         memcpy(logits_per_image[i].data(), logits_per_image_ptr + i * logits_per_image_shape[1], logits_per_image_shape[1] * sizeof(float));
+    //     }
 
-        auto &logits_per_text_output = DecoderOutputTensors[1];
-        auto logits_per_text_ptr = logits_per_text_output.GetTensorMutableData<float>();
-        auto logits_per_text_shape = logits_per_text_output.GetTensorTypeAndShapeInfo().GetShape();
-        logits_per_text.resize(logits_per_text_shape[0]);
-        for (size_t i = 0; i < logits_per_text.size(); i++)
-        {
-            logits_per_text[i].resize(logits_per_text_shape[1]);
-            memcpy(logits_per_text[i].data(), logits_per_text_ptr + i * logits_per_text_shape[1], logits_per_text_shape[1] * sizeof(float));
-        }
-    }
+    //     auto &logits_per_text_output = DecoderOutputTensors[1];
+    //     auto logits_per_text_ptr = logits_per_text_output.GetTensorMutableData<float>();
+    //     auto logits_per_text_shape = logits_per_text_output.GetTensorTypeAndShapeInfo().GetShape();
+    //     logits_per_text.resize(logits_per_text_shape[0]);
+    //     for (size_t i = 0; i < logits_per_text.size(); i++)
+    //     {
+    //         logits_per_text[i].resize(logits_per_text_shape[1]);
+    //         memcpy(logits_per_text[i].data(), logits_per_text_ptr + i * logits_per_text_shape[1], logits_per_text_shape[1] * sizeof(float));
+    //     }
+    // }
 };

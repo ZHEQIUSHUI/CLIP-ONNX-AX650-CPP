@@ -51,7 +51,7 @@ public:
             for (size_t j = 0; j < input_shape.size(); j++)
             {
                 tmp_input_shape[j] = input_shape[j];
-                printf("%d", tmp_input_shape[j]);
+                printf("%ld", tmp_input_shape[j]);
                 if (j < (input_shape.size() - 1))
                     printf(" x ");
             }
@@ -84,7 +84,7 @@ public:
             for (size_t j = 0; j < output_shape.size(); j++)
             {
                 tmp_output_shape[j] = output_shape[j];
-                printf("%d", tmp_output_shape[j]);
+                printf("%ld", tmp_output_shape[j]);
                 if (j < (output_shape.size() - 1))
                     printf(" x ");
             }

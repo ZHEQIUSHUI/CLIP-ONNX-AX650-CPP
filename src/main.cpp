@@ -11,13 +11,11 @@ int main(int argc, char *argv[])
     std::string vocab_path;
     std::string image_encoder_model_path;
     std::string text_encoder_model_path;
-    std::string decoder_model_path;
     int language = 0;
 
     cmdline::parser cmd;
     cmd.add<std::string>("ienc", 0, "encoder model(onnx model or axmodel)", true, image_encoder_model_path);
     cmd.add<std::string>("tenc", 0, "text encoder model(onnx model or axmodel)", true, text_encoder_model_path);
-    cmd.add<std::string>("dec", 'd', "decoder model(onnx)", true, decoder_model_path);
     cmd.add<std::string>("image", 'i', "image file or folder(jpg png etc....)", true, image_src);
     cmd.add<std::string>("text", 't', "text or txt file", true, text_src);
     cmd.add<std::string>("vocab", 'v', "vocab path", true, vocab_path);
@@ -28,7 +26,6 @@ int main(int argc, char *argv[])
     vocab_path = cmd.get<std::string>("vocab");
     image_encoder_model_path = cmd.get<std::string>("ienc");
     text_encoder_model_path = cmd.get<std::string>("tenc");
-    decoder_model_path = cmd.get<std::string>("dec");
     language = cmd.get<int>("language");
 
     std::shared_ptr<CLIP> mClip;
@@ -48,7 +45,6 @@ int main(int argc, char *argv[])
 
     mClip->load_image_encoder(image_encoder_model_path);
     mClip->load_text_encoder(text_encoder_model_path);
-    mClip->load_decoder(decoder_model_path);
     mClip->load_tokenizer(vocab_path, language == 1);
 
     image_src = cmd.get<std::string>("image");

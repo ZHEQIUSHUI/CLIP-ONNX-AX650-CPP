@@ -203,14 +203,18 @@ int ax_runner_ax650::init(const char *model_file)
     m_handle = new ax_joint_runner_ax650_handle_t;
 
     // 1. init engine
+#ifdef AXERA_TARGET_CHIP_AX620E
+    auto ret = AX_ENGINE_Init();
+#elif defined(AXERA_TARGET_CHIP_AX620E)
     AX_ENGINE_NPU_ATTR_T npu_attr;
     memset(&npu_attr, 0, sizeof(npu_attr));
     npu_attr.eHardMode = AX_ENGINE_VIRTUAL_NPU_DISABLE;
-    AX_SYS_Init();
     auto ret = AX_ENGINE_Init(&npu_attr);
+#endif
     if (0 != ret)
     {
-        return ret;
+        ALOGE("AX_ENGINE_Init 0x%x", ret);
+        return -1;
     }
 
     // 2. load model

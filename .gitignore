@@ -17,6 +17,6 @@ data/
 
 # model
 onnx_models
-axpi_pro_bsp_sdk
+*bsp*
 third_party
 ax-pipeline

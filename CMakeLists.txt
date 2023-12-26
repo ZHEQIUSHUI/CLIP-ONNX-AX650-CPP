@@ -53,7 +53,13 @@ include_directories(${BSP_MSP_DIR}/include)
 link_directories(${BSP_MSP_DIR}/lib)
 
 option(BUILD_WITH_AX650 "build with ax650" OFF)
+option(BUILD_WITH_AX620E "build with ax620e" OFF)
 option(BUILD_VIDEO_DEMO "build video demo" OFF)
+
+if(BUILD_WITH_AX620E)
+    set(BUILD_WITH_AX650 ON)
+endif()
+
 
 if(BUILD_WITH_AX650)
     set(AXERA_TARGET_CHIP "AX650")
