@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
 
     mClip->load_image_encoder(image_encoder_model_path);
     mClip->load_text_encoder(text_encoder_model_path);
-    mClip->load_decoder(decoder_model_path);
+    // mClip->load_decoder(decoder_model_path);
     mClip->load_tokenizer(vocab_path, language == 1);
 
     gClip = mClip.get();
