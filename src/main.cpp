@@ -225,7 +225,11 @@ int main(int argc, char *argv[])
             if (!src.data)
                 continue;
             std::vector<float> feat;
+            auto time_start = std::chrono::high_resolution_clock::now();
             mClip->encode(src, feat);
+            auto time_end = std::chrono::high_resolution_clock::now();
+            auto diff = time_end - time_start;
+            std::cout << "image encode cost time : " << std::chrono::duration<double>(diff).count() << "s" << std::endl;
             image_features.push_back(feat);
             image_paths.push_back(image_path);
         }
@@ -236,7 +240,7 @@ int main(int argc, char *argv[])
     mClip->decode(image_features, text_features, logits_per_image, logits_per_text);
     auto time_end = std::chrono::high_resolution_clock::now();
     auto diff = time_end - time_start;
-    std::cout << "matmul Inference Cost time : " << diff.count() << "s" << std::endl;
+    std::cout << "postprocess cost time : " << std::chrono::duration<double>(diff).count() << "s" << std::endl;
 
     printf("\n");
     if (texts.size() > 1)
