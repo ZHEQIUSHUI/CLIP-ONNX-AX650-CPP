@@ -20,7 +20,6 @@ struct model_info_t
     std::string vocab_path;
     std::string image_encoder_model_path;
     std::string text_encoder_model_path;
-    std::string decoder_model_path;
     int language;
 };
 
@@ -48,6 +47,12 @@ public:
 
     pipeline_t pipes[2] = {0};
     VideoDemux demux;
+private slots:
+    void on_btn_save_text_clicked();
+
+private slots:
+    void on_btn_load_txt_clicked();
+
 private slots:
     void on_bn_stop_clicked();
 };

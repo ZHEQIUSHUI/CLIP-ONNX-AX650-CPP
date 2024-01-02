@@ -5,7 +5,7 @@
 #include "QLineEdit"
 #include "QStandardItemModel"
 #include "QFileDialog"
-
+#include "fstream"
 #include "myqlabel.h"
 
 #include "clip/string_utility.hpp"
@@ -25,6 +25,7 @@ std::vector<std::vector<float>> gTextFeatures;
 std::vector<std::vector<float>> gImageFeatures(1);
 std::vector<QTableWidgetItem*> gUpdateScoreItem;
 MainWindow *windows;
+float threshold = 0.75;
 
 void display_func(pipeline_buffer_t *buff)
 {
@@ -68,11 +69,15 @@ void ai_inference_func(pipeline_buffer_t *buff)
             }
 
             QBrush brush(QColor(0,255,0));
+            QBrush brush_blue(QColor(0,0,255));
             for (size_t i = 0; i < gTexts.size(); i++)
             {
                 if(max_id==i)
                 {
-                    gUpdateScoreItem[i]->setBackground(brush);
+                    if(max_val>threshold)
+                        gUpdateScoreItem[i]->setBackground(brush);
+                    else
+                        gUpdateScoreItem[i]->setBackground(brush_blue);
                 }
                 else
                 {
@@ -178,8 +183,8 @@ MainWindow::MainWindow(
                 pipeline_ivps_config_t &config = pipe.m_ivps_attr;
                 config.n_ivps_grp = 1; // 重复的会创建失败
                 config.n_ivps_fps = 30;
-                config.n_ivps_width = 640;
-                config.n_ivps_height = 360;
+                config.n_ivps_width = 1280;
+                config.n_ivps_height = 720;
                 config.b_letterbox = 1;
                 config.n_fifo_count = 1; // 如果想要拿到数据并输出到回调 就设为1~4
 
@@ -213,7 +218,6 @@ MainWindow::MainWindow(
 
             mClip->load_image_encoder(model_info->image_encoder_model_path);
             mClip->load_text_encoder(model_info->text_encoder_model_path);
-            mClip->load_decoder(model_info->decoder_model_path);
             mClip->load_tokenizer(model_info->vocab_path, model_info->language == 1);
             gClip = mClip.get();
         }
@@ -247,6 +251,13 @@ void MainWindow::on_btn_remove_text_clicked()
 
 void MainWindow::on_btn_select_video_clicked()
 {
+    bool isOK;
+    threshold = ui->txt_threshold->text().toDouble(&isOK);
+    if(!isOK){
+        ui->txt_threshold->setText("0.75");
+        threshold = 0.75;
+    }
+
     on_bn_stop_clicked();
     ui->tableWidget->setEnabled(false);
     ui->btn_add_text->setEnabled(false);
@@ -302,5 +313,72 @@ void MainWindow::on_bn_stop_clicked()
     ui->btn_add_text->setEnabled(true);
     ui->btn_remove_text->setEnabled(true);
 
+}
+
+
+void MainWindow::on_btn_load_txt_clicked()
+{
+    auto filename = QFileDialog::getOpenFileName(this, "", "", "Video(*.txt)");
+    if (filename.isEmpty())
+    {
+        return;
+    }
+    std::ifstream infile;
+    infile.open(filename.toStdString());
+    if (!infile.good())
+    {
+        ALOGE("file %s open failed",filename.toStdString().c_str());
+        return;
+    }
+
+    for(int i = ui->tableWidget->rowCount()-1;i>=0;i--)
+    {
+        ui->tableWidget->removeRow(i);
+    }
+
+    std::string s;
+    while (getline(infile, s))
+    {
+        ui->tableWidget->insertRow(ui->tableWidget->rowCount());
+        ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,0,new QTableWidgetItem(QString::fromStdString(s)));
+        ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,1,new QTableWidgetItem("0.0"));
+    }
+}
+
+
+void MainWindow::on_btn_save_text_clicked()
+{
+    QString filename = QFileDialog::getSaveFileName(this,
+                                                    tr("Save Text"),
+                                                    "",
+                                                    tr("*.txt")); // 选择路径
+    if (filename.isEmpty())
+    {
+        return;
+    }
+    else
+    {
+        if (!filename.endsWith(".txt"))
+        {
+            filename += ".txt";
+        }
+    }
+
+    std::ofstream outfile;
+    outfile.open(filename.toStdString());
+    if (!outfile.good())
+    {
+        ALOGE("file %s open failed",filename.toStdString().c_str());
+        return;
+    }
+    for (int i = 0; i < ui->tableWidget->rowCount(); i++)
+    {
+        auto item = ui->tableWidget->item(i, 0);
+        if (item && !item->text().simplified().isEmpty())
+        {
+            auto text = item->text().simplified().toStdString();
+            outfile << text << "\n";
+        }
+    }
 }
 
