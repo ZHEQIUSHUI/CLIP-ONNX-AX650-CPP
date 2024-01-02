@@ -97,6 +97,7 @@ option(BUILD_WITH_AX650 "build with ax650" OFF)
 
 if(BUILD_WITH_AX650)
     add_compile_definitions(BUILD_WITH_AX650)
+    add_compile_definitions(AXERA_TARGET_CHIP_AX650)
 endif()
 
 message(STATUS "BUILD_WITH_AX650 : ${BUILD_WITH_AX650}")

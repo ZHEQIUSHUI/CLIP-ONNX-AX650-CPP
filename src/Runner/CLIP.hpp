@@ -143,6 +143,14 @@ public:
 
     bool load_tokenizer(std::string vocab_path, bool isCN)
     {
+        std::ifstream fs(vocab_path);
+        if(!fs.good())
+        {
+            ALOGE("vocab file open failed %s",vocab_path.c_str());
+            return false;
+        }
+        fs.close();
+
         _isCN = isCN;
         if (isCN)
         {

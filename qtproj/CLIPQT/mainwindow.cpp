@@ -14,7 +14,6 @@ MainWindow::MainWindow(
     std::string vocab_path,
     std::string image_encoder_model_path,
     std::string text_encoder_model_path,
-    std::string decoder_model_path,
     int language,
     QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
@@ -31,13 +30,16 @@ MainWindow::MainWindow(
     else
     {
         fprintf(stderr, "no impl for %s\n", image_encoder_model_path.c_str());
-        return;
+        exit(-1);
     }
 
     mClip->load_image_encoder(image_encoder_model_path);
     mClip->load_text_encoder(text_encoder_model_path);
-    mClip->load_decoder(decoder_model_path);
-    mClip->load_tokenizer(vocab_path, language == 1);
+//    mClip->load_decoder(decoder_model_path);
+    if(!mClip->load_tokenizer(vocab_path, language == 1))
+    {
+        exit(-1);
+    }
 
     if (!string_utility<std::string>::ends_with(image_src, "/") &&
         !string_utility<std::string>::ends_with(image_src, "\\"))

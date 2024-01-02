@@ -21,7 +21,6 @@ public:
                std::string vocab_path,
                std::string image_encoder_model_path,
                std::string text_encoder_model_path,
-               std::string decoder_model_path,
                int language,
                QWidget *parent = nullptr);
     ~MainWindow();

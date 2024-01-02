@@ -161,7 +161,11 @@ int main(int argc, char *argv[])
         ALOGI("and make sure the '.bin' file exist\n");
     }
 
-    mClip->load_tokenizer(vocab_path, language == 1);
+    if(!mClip->load_tokenizer(vocab_path, language == 1))
+    {
+        ALOGE("load tonkenizer failed");
+        return -1;
+    }
 
     image_src = cmd.get<std::string>("image");
     text_src = cmd.get<std::string>("text");
